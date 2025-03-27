@@ -115,6 +115,13 @@ public final class AsyncThrowingRecorder<Output, Failure> where Failure: Error, 
         return nil
     }
 
+    /// Compare values collected by `TestIterator` to an list of expected elements
+    ///
+    ///     let recorder = sut.$isLoading.record()
+    ///     await sut.startLoading()
+    ///     try await recorder.expect(false, true, false)
+    /// - Parameters:
+    ///   - values: List of values in order that the publisher is expected to produce
     public func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async throws(Failure) where Output:Equatable {
         var fetchedValues: [Output] = []
         for _ in 1...values.count {
