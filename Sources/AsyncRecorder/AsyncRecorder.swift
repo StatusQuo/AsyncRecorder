@@ -99,6 +99,25 @@ public final class AsyncRecorder<Output, Failure> where Output: Equatable, Failu
         return nil
     }
 
+
+    public func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
+        let value = await iterator.next()
+        #expect(value != nil)
+        #expect(value! == .finished, sourceLocation: sourceLocation)
+    }
+}
+
+
+extension AsyncRecorder where Output: Equatable {
+    /// Compare values collected by `TestIterator` to an list of expected elements
+    ///
+    ///  Usage:
+    ///
+    ///     let recorder = sut.$isLoading.record()
+    ///     await sut.startLoading()
+    ///     await recorder.expect(false, true, false)
+    /// - Parameters:
+    ///   - values: List of values in order that the publisher is expected to produce
     public func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async {
         var fetchedValues: [Output] = []
         for _ in 1...values.count {
@@ -109,9 +128,4 @@ public final class AsyncRecorder<Output, Failure> where Output: Equatable, Failu
         #expect(fetchedValues == values, sourceLocation: sourceLocation)
     }
 
-    public func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
-        let value = await iterator.next()
-        #expect(value != nil)
-        #expect(value! == .finished, sourceLocation: sourceLocation)
-    }
 }
