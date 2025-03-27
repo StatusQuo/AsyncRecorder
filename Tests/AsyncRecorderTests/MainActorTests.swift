@@ -20,7 +20,7 @@ struct MainActorTests {
         subject.send(1)
         subject.send(completion: .finished)
 
-        try await recorder.expect(0, 1)
+        await recorder.expect(0, 1)
     }
 
     @Test
