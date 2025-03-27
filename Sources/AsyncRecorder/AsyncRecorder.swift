@@ -8,7 +8,7 @@ import Foundation
 import Combine
 import Testing
 
-class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
+public final class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
     private var subscription: AnyCancellable?
     private let publisher: any Publisher<Output, Failure>
     private var stream: AsyncStream<RecorderValue>!
@@ -86,7 +86,7 @@ class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
         iterator = stream.makeAsyncIterator()
     }
 
-    func next(sourceLocation: SourceLocation = #_sourceLocation) async -> Output? {
+    public func next(sourceLocation: SourceLocation = #_sourceLocation) async -> Output? {
         let value = await iterator.next()
         switch value {
         case .value(let result):
@@ -99,7 +99,7 @@ class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
         return nil
     }
 
-    func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async {
+    public func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async {
         var fetchedValues: [Output] = []
         for _ in 1...values.count {
             if let value = await next(sourceLocation: sourceLocation) {
@@ -109,7 +109,7 @@ class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
         #expect(fetchedValues == values, sourceLocation: sourceLocation)
     }
 
-    func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
+    public func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
         let value = await iterator.next()
         #expect(value != nil)
         #expect(value! == .finished, sourceLocation: sourceLocation)
