@@ -4,10 +4,6 @@ import Foundation
 @testable import AsyncRecorder
 
 struct AsyncRecorderTests {
-    enum TestError:Error {
-        case random
-    }
-
     @Test func testPassthroughSubject() async throws {
         let subject = PassthroughSubject<Int, Never>()
         let recorder = subject.record()
