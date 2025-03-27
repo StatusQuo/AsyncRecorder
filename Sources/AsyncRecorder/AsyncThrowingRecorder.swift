@@ -12,17 +12,7 @@ import Foundation
 import Combine
 import Testing
 
-extension Publisher {
-    func record() -> AsyncThrowingRecorder<Output, Failure> where Output: Equatable, Failure: Error {
-        .init(publisher: self)
-    }
-
-    func record() -> AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
-        .init(publisher: self)
-    }
-}
-
-class AsyncThrowingRecorder<Output, Failure> where Failure: Error, Output: Equatable {
+public final class AsyncThrowingRecorder<Output, Failure> where Failure: Error, Output: Equatable {
     private var subscription: AnyCancellable?
     private let publisher: any Publisher<Output, Failure>
     private var stream: AsyncStream<RecorderValue>!
@@ -110,7 +100,7 @@ class AsyncThrowingRecorder<Output, Failure> where Failure: Error, Output: Equat
         iterator = stream.makeAsyncIterator()
     }
 
-    func next(sourceLocation: SourceLocation = #_sourceLocation) async throws(Failure) -> Output? {
+    public func next(sourceLocation: SourceLocation = #_sourceLocation) async throws(Failure) -> Output? {
         let value = await iterator.next()
         switch value {
         case .value(let result):
@@ -125,7 +115,7 @@ class AsyncThrowingRecorder<Output, Failure> where Failure: Error, Output: Equat
         return nil
     }
 
-    func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async throws(Failure) where Output:Equatable {
+    public func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async throws(Failure) where Output:Equatable {
         var fetchedValues: [Output] = []
         for _ in 1...values.count {
             if let value = try await next(sourceLocation: sourceLocation) {
@@ -135,7 +125,7 @@ class AsyncThrowingRecorder<Output, Failure> where Failure: Error, Output: Equat
         #expect(fetchedValues == values, sourceLocation: sourceLocation)
     }
 
-    func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async throws(Failure) {
+    public func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async throws(Failure) {
         let value = await iterator.next()
         #expect(value! == .finished, sourceLocation: sourceLocation)
     }
