@@ -38,6 +38,31 @@ struct AsyncRecorderTests {
         try await recorder.expect(0, 1)
     }
 
+    @Test
+    func testPublisherTimeout() async throws {
+        await withKnownIssue {
+            let subject = CurrentValueSubject<Int, Never>(0)
+            let recorder = subject.record()
+
+            subject.send(1)
+
+            try await recorder.expect(0, 1, 2)
+        }
+    }
+
+    @Test
+    func testPublisherUnexpectedFailure() async throws {
+        await withKnownIssue {
+            let subject = CurrentValueSubject<Int, TestError>(0)
+            let recorder = subject.record()
+
+            subject.send(1)
+            subject.send(completion: .failure(.random))
+
+            try await recorder.expect(0, 1, 2)
+        }
+    }
+
     @Test func example11() async throws {
         let subject = PassthroughSubject<Int, Error>()
         let recorder = subject.record()
@@ -51,6 +76,5 @@ struct AsyncRecorderTests {
         #expect(try await recorder.next() >= 0)
         #expect(try await recorder.next() >= 0)
         try await recorder.expectCompletion()
-
     }
 }
