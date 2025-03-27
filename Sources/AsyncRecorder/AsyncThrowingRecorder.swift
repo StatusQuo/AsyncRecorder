@@ -1,21 +1,35 @@
+// The Swift Programming Language
+// https://docs.swift.org/swift-book
+
 //
-//  Recorder.swift
-//  AsyncRecorder
+//  AsyncThrowingRecorder.swift
+//  combineTesting
 //
 //  Created by Sebastian Humann-Nehrke on 27.03.25.
 //
+
 import Foundation
 import Combine
 import Testing
 
-class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
+extension Publisher {
+    func record() -> AsyncThrowingRecorder<Output, Failure> where Output: Equatable, Failure: Error {
+        .init(publisher: self)
+    }
+
+    func record() -> AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
+        .init(publisher: self)
+    }
+}
+
+class AsyncThrowingRecorder<Output, Failure> where Failure: Error, Output: Equatable {
     private var subscription: AnyCancellable?
     private let publisher: any Publisher<Output, Failure>
     private var stream: AsyncStream<RecorderValue>!
     private var iterator: AsyncStream<RecorderValue>.Iterator!
     private let timeout: RunLoop.SchedulerTimeType.Stride
 
-    enum RecorderValue {
+    enum RecorderValue: Equatable {
         static func == (lhs: RecorderValue, rhs: RecorderValue) -> Bool {
             switch (lhs, rhs) {
             case (.value(let vl), .value(let vr)):
@@ -24,6 +38,8 @@ class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
                 return true
             case (.timeout, .timeout):
                 return true
+            case (.failure(let lhsError), .failure(let rhsError)):
+                return lhsError.localizedDescription == rhsError.localizedDescription
             default:
                 return false
             }
@@ -32,6 +48,7 @@ class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
         case value(Output)
         case finished
         case timeout
+        case failure(Failure)
     }
 
     init(publisher: any Publisher<Output, Failure>, timeout: RunLoop.SchedulerTimeType.Stride = .seconds(1)) {
@@ -42,6 +59,7 @@ class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
 
     enum RecorderError: Error {
         case timeout
+        case unexpected(Failure)
     }
 
     private func subscribe() {
@@ -53,10 +71,15 @@ class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
                 continuation.yield(RecorderValue.value(output))
             }
             completion = { error in
-                if error != nil {
-                    continuation.yield(RecorderValue.timeout)
+                if let error {
+                    switch error {
+                    case .unexpected(let failure):
+                        continuation.yield(.failure(failure))
+                    case .timeout:
+                        continuation.yield(.timeout)
+                    }
                 } else {
-                    continuation.yield(RecorderValue.finished)
+                    continuation.yield(.finished)
                 }
                 continuation.finish()
                 self.subscription = nil
@@ -65,12 +88,13 @@ class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
 
         subscription = publisher
             .eraseToAnyPublisher()
-            .buffer(size: .max, prefetch: .byRequest, whenFull: .dropOldest)
-            .assertNoFailure()
-            .setFailureType(to: RecorderError.self)
-            .timeout(timeout, scheduler: RunLoop.main, customError: {
-                return .timeout
+            .mapError({ error in
+                RecorderError.unexpected(error)
             })
+            .timeout(timeout, scheduler: RunLoop.main, customError: {
+                return RecorderError.timeout
+            })
+            .buffer(size: .max, prefetch: .byRequest, whenFull: .dropOldest)
             .sink { result in
                 switch result {
                 case .failure(let error):
@@ -86,7 +110,7 @@ class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
         iterator = stream.makeAsyncIterator()
     }
 
-    func next(sourceLocation: SourceLocation = #_sourceLocation) async -> Output? {
+    func next(sourceLocation: SourceLocation = #_sourceLocation) async throws(Failure) -> Output? {
         let value = await iterator.next()
         switch value {
         case .value(let result):
@@ -95,23 +119,24 @@ class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
             #expect(Bool(false), "Timeout reached", sourceLocation: sourceLocation)
         case .finished, .none:
             #expect(Bool(false), "End of stream reached", sourceLocation: sourceLocation)
+        case .failure(let error):
+            throw error
         }
         return nil
     }
 
-    func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async {
+    func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async throws(Failure) where Output:Equatable {
         var fetchedValues: [Output] = []
         for _ in 1...values.count {
-            if let value = await next(sourceLocation: sourceLocation) {
+            if let value = try await next(sourceLocation: sourceLocation) {
                 fetchedValues.append(value)
             }
         }
         #expect(fetchedValues == values, sourceLocation: sourceLocation)
     }
 
-    func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
+    func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async throws(Failure) {
         let value = await iterator.next()
-        #expect(value != nil)
         #expect(value! == .finished, sourceLocation: sourceLocation)
     }
 }

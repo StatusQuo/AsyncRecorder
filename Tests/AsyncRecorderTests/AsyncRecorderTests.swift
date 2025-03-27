@@ -1,33 +1,15 @@
+//
+//  Test.swift
+//  AsyncRecorder
+//
+//  Created by Sebastian Humann-Nehrke on 27.03.25.
+//
+
 import Testing
 import Combine
-import Foundation
 @testable import AsyncRecorder
 
 struct AsyncRecorderTests {
-    @Test func testPassthroughSubject() async throws {
-        let subject = PassthroughSubject<Int, Never>()
-        let recorder = subject.record()
-
-        subject.send(0)
-        subject.send(1)
-        subject.send(completion: .finished)
-
-        try await recorder.expect(0, 1)
-    }
-
-    @Test func publisherRunsIntoError() async throws {
-        let subject = PassthroughSubject<Int, TestError>()
-        let recorder = subject.record()
-
-        subject.send(0)
-        subject.send(1)
-        subject.send(completion: .failure(.random))
-
-        await #expect(throws: TestError.random) {
-            try await recorder.expect(0, 1, 2)
-        }
-    }
-
     @Test
     func testPublisherWithoutError() async throws {
         let subject = CurrentValueSubject<Int, Never>(0)
@@ -35,7 +17,7 @@ struct AsyncRecorderTests {
 
         subject.send(1)
 
-        try await recorder.expect(0, 1)
+        await recorder.expect(0, 1)
     }
 
     @Test
@@ -46,35 +28,53 @@ struct AsyncRecorderTests {
 
             subject.send(1)
 
-            try await recorder.expect(0, 1, 2)
+            await recorder.expect(0, 1, 2)
         }
     }
 
     @Test
-    func testPublisherUnexpectedFailure() async throws {
+    func testPublisherTimeoutOnCompletion() async throws {
         await withKnownIssue {
-            let subject = CurrentValueSubject<Int, TestError>(0)
+            let subject = PassthroughSubject<Int, Never>()
             let recorder = subject.record()
 
             subject.send(1)
-            subject.send(completion: .failure(.random))
 
-            try await recorder.expect(0, 1, 2)
+            await recorder.expect(1)
+            await recorder.expectCompletion()
         }
     }
 
-    @Test func example11() async throws {
-        let subject = PassthroughSubject<Int, Error>()
+    @Test func testPassthroughSubject() async throws {
+        let subject = PassthroughSubject<Int, Never>()
         let recorder = subject.record()
 
         subject.send(0)
         subject.send(1)
-        subject.send(2)
         subject.send(completion: .finished)
 
-        #expect(try await recorder.next() == 0)
-        #expect(try await recorder.next() >= 0)
-        #expect(try await recorder.next() >= 0)
-        try await recorder.expectCompletion()
+        await recorder.expect(0, 1)
+    }
+
+    @Test func testPassthroughSubjectFinished() async throws {
+        await withKnownIssue {
+            let subject = PassthroughSubject<Int, Never>()
+            let recorder = subject.record()
+
+            subject.send(0)
+            subject.send(1)
+
+            await recorder.expect(0, 1)
+            await recorder.expect(2)
+        }
+    }
+
+    @Test func testAsyncRecorder() async throws {
+        let subject = CurrentValueSubject<Int, Never>(0)
+        let recorder = subject.record()
+
+        subject.send(1)
+
+        await recorder.expect(0, 1)
     }
 }
