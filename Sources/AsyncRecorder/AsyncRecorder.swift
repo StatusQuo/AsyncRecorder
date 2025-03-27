@@ -22,14 +22,14 @@ extension Publisher {
 //    }
 }
 
-class AsyncThrowingRecorder<Output, Failure> where Failure: Error, Output: Equatable & Sendable {
+class AsyncThrowingRecorder<Output, Failure> where Failure: Error, Output: Equatable {
     private var subscription: AnyCancellable?
     private let publisher: any Publisher<Output, Failure>
     private var stream: AsyncStream<RecorderValue>!
     private var iterator: AsyncStream<RecorderValue>.Iterator!
     private let timeout: RunLoop.SchedulerTimeType.Stride
 
-    enum RecorderValue: Sendable {
+    enum RecorderValue {
         static func == (lhs: RecorderValue, rhs: RecorderValue) -> Bool {
             switch (lhs, rhs) {
             case (.value(let vl), .value(let vr)):
