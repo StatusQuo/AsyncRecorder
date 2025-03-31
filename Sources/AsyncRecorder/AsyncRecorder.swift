@@ -8,7 +8,21 @@ import Foundation
 import Combine
 import Testing
 
-public final class AsyncRecorder<Output, Failure> where Output: Equatable, Failure == Never {
+//        static func == (lhs: RecorderValue, rhs: RecorderValue) -> Bool {
+//            switch (lhs, rhs) {
+//            case (.value(let vl), .value(let vr)):
+//                return vl == vr
+//            case (.finished, .finished):
+//                return true
+//            case (.timeout, .timeout):
+//                return true
+//            default:
+//                return false
+//            }
+//        }
+
+
+public final class AsyncRecorder<Output, Failure> where Failure == Never {
     private var subscription: AnyCancellable?
     private let publisher: any Publisher<Output, Failure>
     private var stream: AsyncStream<RecorderValue>!
@@ -16,15 +30,13 @@ public final class AsyncRecorder<Output, Failure> where Output: Equatable, Failu
     private let timeout: RunLoop.SchedulerTimeType.Stride
 
     enum RecorderValue {
-        static func == (lhs: RecorderValue, rhs: RecorderValue) -> Bool {
-            switch (lhs, rhs) {
-            case (.value(let vl), .value(let vr)):
-                return vl == vr
-            case (.finished, .finished):
+        func isFinished() -> Bool {
+            switch self {
+            case .value(_):
+                return false
+            case .finished:
                 return true
-            case (.timeout, .timeout):
-                return true
-            default:
+            case .timeout:
                 return false
             }
         }
@@ -103,7 +115,7 @@ public final class AsyncRecorder<Output, Failure> where Output: Equatable, Failu
     public func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
         let value = await iterator.next()
         #expect(value != nil)
-        #expect(value! == .finished, sourceLocation: sourceLocation)
+        #expect(value!.isFinished(), sourceLocation: sourceLocation)
     }
 }
 
@@ -127,5 +139,16 @@ extension AsyncRecorder where Output: Equatable {
         }
         #expect(fetchedValues == values, sourceLocation: sourceLocation)
     }
+}
 
+extension AsyncRecorder where Output == Void {
+    public func expectInvocation(_ invocations:Int = 1, sourceLocation: SourceLocation = #_sourceLocation) async {
+        var counter = 0
+        for _ in 1...invocations {
+            if await next(sourceLocation: sourceLocation) != nil {
+                counter += 1
+            }
+        }
+        #expect(counter == invocations, sourceLocation: sourceLocation)
+    }
 }

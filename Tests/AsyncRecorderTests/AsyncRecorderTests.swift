@@ -21,6 +21,29 @@ struct AsyncRecorderTests {
     }
 
     @Test
+    func testPublisherVoid() async throws {
+        let subject = PassthroughSubject<Void, Never>()
+        let recorder = subject.record()
+
+        subject.send(())
+
+        let result: Void = await recorder.next()!
+        #expect(result == ())
+    }
+
+    @Test
+    func testPublisherVoid2() async throws {
+        let subject = PassthroughSubject<Void, Never>()
+        let recorder = subject.record()
+
+        subject.send(())
+        subject.send(())
+        subject.send(())
+
+        await recorder.expectInvocation(3)
+    }
+
+    @Test
     func testPublisherTimeout() async throws {
         await withKnownIssue {
             let subject = CurrentValueSubject<Int, Never>(0)

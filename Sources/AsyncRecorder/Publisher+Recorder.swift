@@ -7,7 +7,11 @@
 import Combine
 
 public extension Publisher {
-    func record() -> AsyncThrowingRecorder<Output, Failure> where Output: Equatable, Failure: Error {
+    func record() -> AsyncThrowingRecorder<Output, Failure> where Failure: Error {
+        .init(publisher: self)
+    }
+
+    func record() -> AsyncRecorder<Output, Failure> where Failure == Never {
         .init(publisher: self)
     }
 
