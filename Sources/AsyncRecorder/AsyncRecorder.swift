@@ -16,8 +16,8 @@ public final class AsyncRecorder<Output, Failure> {
     private var subscription: AnyCancellable?
     private let publisher: any Publisher<Output, Failure>
     private var stream: AsyncStream<RecorderValue>!
-    private var iterator: AsyncStream<RecorderValue>.Iterator!
     private let timeout: RunLoop.SchedulerTimeType.Stride
+    var iterator: AsyncStream<RecorderValue>.Iterator!
 
     enum RecorderValue {
         case value(Output)
@@ -114,8 +114,10 @@ public final class AsyncRecorder<Output, Failure> {
             .buffer(size: .max, prefetch: .byRequest, whenFull: .dropOldest)
             .eraseToAnyPublisher()
     }
+}
 
-    public func next(sourceLocation: SourceLocation = #_sourceLocation) async -> Output? {
+public extension AsyncRecorder {
+    func next(sourceLocation: SourceLocation = #_sourceLocation) async -> Output? {
         let value = await iterator.next()
         switch value {
         case .value(let result):
@@ -134,7 +136,7 @@ public final class AsyncRecorder<Output, Failure> {
 public extension AsyncRecorder {
     func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
         let value = await iterator.next()
-        #expect(value!.isFinished(), sourceLocation: sourceLocation)
+        #expect(value?.isFinished() == true, sourceLocation: sourceLocation)
     }
 }
 
@@ -165,6 +167,8 @@ public extension AsyncRecorder where Failure: Error {
         let value = await iterator.next()
         if case .failure(let failure) = value {
             throw failure
+        } else {
+            #expect(Bool(false), "No failure found", sourceLocation: sourceLocation)
         }
     }
 }
@@ -181,3 +185,4 @@ public extension AsyncRecorder where Output == Void {
         return self
     }
 }
+
