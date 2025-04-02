@@ -11,7 +11,6 @@ import Combine
 
 @MainActor
 struct MainActorTests {
-
     @Test func testSubject() async throws {
         let subject = PassthroughSubject<Int, Never>()
         let recorder = subject.record()
@@ -33,8 +32,10 @@ struct MainActorTests {
         subject.send(completion: .failure(.random))
 
         await #expect(throws: TestError.random) {
-            try await recorder.expect(0, 1, 2)
+            try await recorder
+                .expect(0, 1)
+                .expectError()
+//            try await recorder.expect(0, 1, 2)
         }
     }
-
 }

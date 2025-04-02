@@ -12,9 +12,7 @@ struct AsyncThrowningRecorderTests {
         subject.send(1)
         subject.send(completion: .failure(.random))
 
-        await #expect(throws: TestError.random) {
-            try await recorder.expect(0, 1, 2)
-        }
+        await recorder.expect(0, 1)
     }
 
     @Test
@@ -26,7 +24,7 @@ struct AsyncThrowningRecorderTests {
             subject.send(1)
             subject.send(completion: .failure(.random))
 
-            try await recorder.expect(0, 1, 2)
+            await recorder.expect(0, 1, 2)
         }
     }
 
@@ -39,9 +37,9 @@ struct AsyncThrowningRecorderTests {
         subject.send(2)
         subject.send(completion: .finished)
 
-        #expect(try await recorder.next() == 0)
-        #expect(try await recorder.next()! >= 0)
-        #expect(try await recorder.next()! >= 0)
-        try await recorder.expectCompletion()
+        #expect(await recorder.next() == 0)
+        #expect(await recorder.next()! >= 0)
+        #expect(await recorder.next()! >= 0)
+        await recorder.expectCompletion()
     }
 }
