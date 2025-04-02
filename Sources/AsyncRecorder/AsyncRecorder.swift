@@ -45,13 +45,6 @@ public final class AsyncRecorder<Output, Failure> {
         subscribe(to: pub)
     }
 
-    init(publisher: any Publisher<Output, Failure>, timeout: RunLoop.SchedulerTimeType.Stride) where Failure == Never {
-        self.timeout = timeout
-        self.publisher = publisher
-        let pub = publisherToSubscribe()
-        subscribe(to: pub)
-    }
-
     private func subscribe(to publisher: AnyPublisher<Output, RecorderError>) {
         var handler: ((Output) -> Void)!
         var completion: ((RecorderError?) -> Void)!
@@ -96,18 +89,6 @@ public final class AsyncRecorder<Output, Failure> {
         publisher
             .eraseToAnyPublisher()
             .mapError { RecorderError.unexpected($0) }
-            .timeout(timeout, scheduler: RunLoop.main) {
-                RecorderError.timeout
-            }
-            .buffer(size: .max, prefetch: .byRequest, whenFull: .dropOldest)
-            .eraseToAnyPublisher()
-    }
-
-    private func publisherToSubscribe() -> AnyPublisher<Output, RecorderError> where Failure == Never {
-        publisher
-            .eraseToAnyPublisher()
-            .assertNoFailure()
-            .setFailureType(to: RecorderError.self)
             .timeout(timeout, scheduler: RunLoop.main) {
                 RecorderError.timeout
             }
