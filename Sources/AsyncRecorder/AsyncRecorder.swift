@@ -1,28 +1,18 @@
+// The Swift Programming Language
+// https://docs.swift.org/swift-book
+
 //
-//  Recorder.swift
-//  AsyncRecorder
+//  AsyncRecorder.swift
+//  combineTesting
 //
 //  Created by Sebastian Humann-Nehrke on 27.03.25.
 //
+
 import Foundation
 import Combine
 import Testing
 
-//        static func == (lhs: RecorderValue, rhs: RecorderValue) -> Bool {
-//            switch (lhs, rhs) {
-//            case (.value(let vl), .value(let vr)):
-//                return vl == vr
-//            case (.finished, .finished):
-//                return true
-//            case (.timeout, .timeout):
-//                return true
-//            default:
-//                return false
-//            }
-//        }
-
-
-public final class AsyncRecorder<Output, Failure> where Failure == Never {
+public final class AsyncRecorder<Output, Failure> {
     private var subscription: AnyCancellable?
     private let publisher: any Publisher<Output, Failure>
     private var stream: AsyncStream<RecorderValue>!
@@ -30,33 +20,41 @@ public final class AsyncRecorder<Output, Failure> where Failure == Never {
     private let timeout: RunLoop.SchedulerTimeType.Stride
 
     enum RecorderValue {
-        func isFinished() -> Bool {
-            switch self {
-            case .value(_):
-                return false
-            case .finished:
-                return true
-            case .timeout:
-                return false
-            }
-        }
-
         case value(Output)
         case finished
         case timeout
+        case failure(Failure)
+
+        func isFinished() -> Bool {
+            switch self {
+            case .finished:
+                return true
+            case .timeout, .value(_), .failure(_):
+                return false
+            }
+        }
     }
 
-    init(publisher: any Publisher<Output, Failure>, timeout: RunLoop.SchedulerTimeType.Stride = .seconds(1)) {
+    init(publisher: any Publisher<Output, Failure>, timeout: RunLoop.SchedulerTimeType.Stride = .seconds(1)) where Failure: Error {
         self.timeout = timeout
         self.publisher = publisher
-        subscribe()
+        let pub = publisherToSubscribe()
+        subscribe(to: pub)
+    }
+
+    init(publisher: any Publisher<Output, Failure>, timeout: RunLoop.SchedulerTimeType.Stride = .seconds(1)) where Failure == Never {
+        self.timeout = timeout
+        self.publisher = publisher
+        let pub = publisherToSubscribe()
+        subscribe(to: pub)
     }
 
     enum RecorderError: Error {
         case timeout
+        case unexpected(Failure)
     }
 
-    private func subscribe() {
+    private func subscribe(to publisher: AnyPublisher<Output, RecorderError>) {
         var handler: ((Output) -> Void)!
         var completion: ((RecorderError?) -> Void)!
 
@@ -65,10 +63,15 @@ public final class AsyncRecorder<Output, Failure> where Failure == Never {
                 continuation.yield(RecorderValue.value(output))
             }
             completion = { error in
-                if error != nil {
-                    continuation.yield(RecorderValue.timeout)
+                if let error {
+                    switch error {
+                    case .unexpected(let failure):
+                        continuation.yield(.failure(failure))
+                    case .timeout:
+                        continuation.yield(.timeout)
+                    }
                 } else {
-                    continuation.yield(RecorderValue.finished)
+                    continuation.yield(.finished)
                 }
                 continuation.finish()
                 self.subscription = nil
@@ -76,13 +79,6 @@ public final class AsyncRecorder<Output, Failure> where Failure == Never {
         }
 
         subscription = publisher
-            .eraseToAnyPublisher()
-            .buffer(size: .max, prefetch: .byRequest, whenFull: .dropOldest)
-            .assertNoFailure()
-            .setFailureType(to: RecorderError.self)
-            .timeout(timeout, scheduler: RunLoop.main, customError: {
-                return .timeout
-            })
             .sink { result in
                 switch result {
                 case .failure(let error):
@@ -98,6 +94,29 @@ public final class AsyncRecorder<Output, Failure> where Failure == Never {
         iterator = stream.makeAsyncIterator()
     }
 
+    private func publisherToSubscribe() -> AnyPublisher<Output, RecorderError> where Failure: Error {
+        publisher
+            .eraseToAnyPublisher()
+            .mapError { RecorderError.unexpected($0) }
+            .timeout(timeout, scheduler: RunLoop.main) {
+                RecorderError.timeout
+            }
+            .buffer(size: .max, prefetch: .byRequest, whenFull: .dropOldest)
+            .eraseToAnyPublisher()
+    }
+
+    private func publisherToSubscribe() -> AnyPublisher<Output, RecorderError> where Failure == Never {
+        publisher
+            .eraseToAnyPublisher()
+            .assertNoFailure()
+            .setFailureType(to: RecorderError.self)
+            .timeout(timeout, scheduler: RunLoop.main) {
+                RecorderError.timeout
+            }
+            .buffer(size: .max, prefetch: .byRequest, whenFull: .dropOldest)
+            .eraseToAnyPublisher()
+    }
+
     public func next(sourceLocation: SourceLocation = #_sourceLocation) async -> Output? {
         let value = await iterator.next()
         switch value {
@@ -107,20 +126,21 @@ public final class AsyncRecorder<Output, Failure> where Failure == Never {
             #expect(Bool(false), "Timeout reached", sourceLocation: sourceLocation)
         case .finished, .none:
             #expect(Bool(false), "End of stream reached", sourceLocation: sourceLocation)
+        case .failure(_):
+            #expect(Bool(false), "Error not handled", sourceLocation: sourceLocation)
         }
         return nil
     }
+}
 
-
-    public func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
+public extension AsyncRecorder {
+    func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
         let value = await iterator.next()
-        #expect(value != nil)
         #expect(value!.isFinished(), sourceLocation: sourceLocation)
     }
 }
 
-
-extension AsyncRecorder where Output: Equatable {
+public extension AsyncRecorder where Output: Equatable {
     /// Compare values collected by `TestIterator` to an list of expected elements
     ///
     ///  Usage:
@@ -130,7 +150,7 @@ extension AsyncRecorder where Output: Equatable {
     ///     await recorder.expect(false, true, false)
     /// - Parameters:
     ///   - values: List of values in order that the publisher is expected to produce
-    public func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async {
+    @discardableResult func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async -> Self {
         var fetchedValues: [Output] = []
         for _ in 1...values.count {
             if let value = await next(sourceLocation: sourceLocation) {
@@ -138,11 +158,21 @@ extension AsyncRecorder where Output: Equatable {
             }
         }
         #expect(fetchedValues == values, sourceLocation: sourceLocation)
+        return self
     }
 }
 
-extension AsyncRecorder where Output == Void {
-    public func expectInvocation(_ invocations:Int = 1, sourceLocation: SourceLocation = #_sourceLocation) async {
+public extension AsyncRecorder where Failure: Error {
+    func expectError(sourceLocation: SourceLocation = #_sourceLocation) async throws {
+        let value = await iterator.next()
+        if case .failure(let failure) = value {
+            throw failure
+        }
+    }
+}
+
+public extension AsyncRecorder where Output == Void {
+    @discardableResult func expectInvocation(_ invocations:Int = 1, sourceLocation: SourceLocation = #_sourceLocation) async -> Self {
         var counter = 0
         for _ in 1...invocations {
             if await next(sourceLocation: sourceLocation) != nil {
@@ -150,5 +180,6 @@ extension AsyncRecorder where Output == Void {
             }
         }
         #expect(counter == invocations, sourceLocation: sourceLocation)
+        return self
     }
 }
