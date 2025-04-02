@@ -12,7 +12,11 @@ struct AsyncThrowningRecorderTests {
         subject.send(1)
         subject.send(completion: .failure(.random))
 
-        await recorder.expect(0, 1)
+        await #expect(throws: TestError.random) {
+            try await recorder
+                .expect(0, 1)
+                .expectError()
+        }
     }
 
     @Test
