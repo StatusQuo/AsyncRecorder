@@ -26,32 +26,30 @@ public final class AsyncRecorder<Output, Failure> {
         case failure(Failure)
 
         func isFinished() -> Bool {
-            switch self {
-            case .finished:
+            if case .finished = self {
                 return true
-            case .timeout, .value(_), .failure(_):
-                return false
             }
+            return false
         }
-    }
-
-    init(publisher: any Publisher<Output, Failure>, timeout: RunLoop.SchedulerTimeType.Stride = .seconds(1)) where Failure: Error {
-        self.timeout = timeout
-        self.publisher = publisher
-        let pub = publisherToSubscribe()
-        subscribe(to: pub)
-    }
-
-    init(publisher: any Publisher<Output, Failure>, timeout: RunLoop.SchedulerTimeType.Stride = .seconds(1)) where Failure == Never {
-        self.timeout = timeout
-        self.publisher = publisher
-        let pub = publisherToSubscribe()
-        subscribe(to: pub)
     }
 
     enum RecorderError: Error {
         case timeout
         case unexpected(Failure)
+    }
+
+    init(publisher: any Publisher<Output, Failure>, timeout: RunLoop.SchedulerTimeType.Stride) where Failure: Error {
+        self.timeout = timeout
+        self.publisher = publisher
+        let pub = publisherToSubscribe()
+        subscribe(to: pub)
+    }
+
+    init(publisher: any Publisher<Output, Failure>, timeout: RunLoop.SchedulerTimeType.Stride) where Failure == Never {
+        self.timeout = timeout
+        self.publisher = publisher
+        let pub = publisherToSubscribe()
+        subscribe(to: pub)
     }
 
     private func subscribe(to publisher: AnyPublisher<Output, RecorderError>) {
