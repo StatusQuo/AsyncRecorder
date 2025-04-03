@@ -1,6 +1,6 @@
 # AsyncRecorder  
 
-**AsyncRecorder** enables testing of Combine publishers using `await`.  
+**AsyncRecorder** enables testing of Combine publishers using `await`. The publisher will be collected into a async stream of data. Each element can be fetched one after another using `next`. Methods like `expect`, `expectCompletion` and `expectError` helps to parse and tests the results easily.  
 
 ## Installation  
 
