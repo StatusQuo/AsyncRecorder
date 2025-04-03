@@ -12,7 +12,7 @@ public extension Publisher {
     /// Create a `AsyncRecorder` for a given `Publisher`
     /// - Parameter timeout: timeout to wait for an expected event since the last value was published. default: 1 second
     /// - Returns: a new `AsyncRecorder`
-    func record(timeout: RunLoop.SchedulerTimeType.Stride = .seconds(1)) -> AsyncRecorder<Output, Failure> {
+    func record(timeout: RunLoop.SchedulerTimeType.Stride = .seconds(1)) -> AsyncRecorder<Output, Failure> where Output: Sendable, Failure: Sendable {
         .init(publisher: self, timeout: timeout)
     }
 }

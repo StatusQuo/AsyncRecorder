@@ -12,14 +12,14 @@ import Foundation
 import Combine
 import Testing
 
-public final class AsyncRecorder<Output, Failure> {
+public final class AsyncRecorder<Output, Failure> where Failure: Sendable, Output: Sendable {
     private var subscription: AnyCancellable?
     private let publisher: any Publisher<Output, Failure>
     private var stream: AsyncStream<RecorderValue>!
     private let timeout: RunLoop.SchedulerTimeType.Stride
     var iterator: AsyncStream<RecorderValue>.Iterator!
 
-    enum RecorderValue {
+    enum RecorderValue: Sendable {
         case value(Output)
         case finished
         case timeout
