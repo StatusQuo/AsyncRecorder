@@ -115,6 +115,9 @@ public extension AsyncRecorder {
 }
 
 public extension AsyncRecorder {
+    /// Expect that the `Publisher`will complete with `.finish` with the next event
+    ///
+    /// expectation will fail when `Publisher` continues to produce values
     func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
         let value = await iterator.next()
         #expect(value?.isFinished() == true, sourceLocation: sourceLocation)
@@ -122,7 +125,7 @@ public extension AsyncRecorder {
 }
 
 public extension AsyncRecorder where Output: Equatable {
-    /// Compare values collected by `TestIterator` to an list of expected elements
+    /// Collects elements of `AsyncRecorder`and compares it to an list of expected elements
     ///
     ///  Usage:
     ///
@@ -144,6 +147,8 @@ public extension AsyncRecorder where Output: Equatable {
 }
 
 public extension AsyncRecorder where Failure: Error {
+    /// Expect that the `Publisher`will complete with `.failure` with the next event.
+    ///  The error will be thrown by this function and can be handled by `#expect(throws:)`
     func expectError(sourceLocation: SourceLocation = #_sourceLocation) async throws {
         let value = await iterator.next()
         if case .failure(let failure) = value {
@@ -155,6 +160,9 @@ public extension AsyncRecorder where Failure: Error {
 }
 
 public extension AsyncRecorder where Output == Void {
+    /// Expect that the `Publisher`will publish a specific amount of times `Void`
+    /// - Parameters:
+    ///   - invocations: number of invocations default is one
     @discardableResult func expectInvocation(_ invocations:Int = 1, sourceLocation: SourceLocation = #_sourceLocation) async -> Self {
         var counter = 0
         for _ in 1...invocations {
