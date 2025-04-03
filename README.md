@@ -44,7 +44,7 @@ struct PublisherTests {
 
 ### Test Completion of Publishers
 
-We can also `await` the completion of a `Publisher`
+To wait for a `Publisher` to "finish" use `expectCompletion`.
 
 ```swift
 @Test func testExpectCompletion() async throws {
@@ -63,7 +63,7 @@ We can also `await` the completion of a `Publisher`
 
 ### Test Failure of Publishers
 
-We can also `await` the error of a `Publisher`
+Errors can be expected with `expectError`.
 
 ```swift
 @Test func testExpectError() async throws {
@@ -84,7 +84,7 @@ We can also `await` the error of a `Publisher`
 
 ### Test Void Publishers
 
-With `expectInvocation` is handy to expect Void Publishers.
+A Void `Publisher` can be expected by `expectInvocation`.
 
 ```swift
 @Test
@@ -101,6 +101,8 @@ func testExpectInvocation() async throws {
 ```
 
 ### Use manual `next()` for more complex Types
+
+For all other cases and more control you can manually pull one element form the stack with `next()`. This method will fail with an expectation if the next element is not a value.
 
 ```swift
 @Test
