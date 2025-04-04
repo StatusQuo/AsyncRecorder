@@ -1,6 +1,7 @@
 # AsyncRecorder  
 ![Build](https://github.com/StatusQuo/AsyncRecorder/actions/workflows/swift.yml/badge.svg)
-
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FStatusQuo%2FAsyncRecorder%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/StatusQuo/AsyncRecorder)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FStatusQuo%2FAsyncRecorder%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/StatusQuo/AsyncRecorder)
 
 **AsyncRecorder** enables testing of Combine publishers using `await` in SwiftTesting setups. The publisher will be collected into a async stream of data. Each element can be fetched one after another using `next`. Methods like `expect`, `expectCompletion` and `expectError` helps to parse and tests the results easily.  
 
