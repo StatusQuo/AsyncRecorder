@@ -143,6 +143,20 @@ public extension AsyncRecorder where Output: Equatable {
     /// - Parameters:
     ///   - values: List of values in order that the publisher is expected to produce
     @discardableResult func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async -> Self {
+        await expect(values, sourceLocation: sourceLocation)
+        return self
+    }
+
+    /// Collects elements of `AsyncRecorder`and compares it to an list of expected elements
+    ///
+    ///  Usage:
+    ///
+    ///     let recorder = sut.$isLoading.record()
+    ///     await sut.startLoading()
+    ///     await recorder.expect(false, true, false)
+    /// - Parameters:
+    ///   - values: List of values in order that the publisher is expected to produce
+    @discardableResult func expect(_ values: [Output], sourceLocation: SourceLocation = #_sourceLocation) async -> Self {
         var fetchedValues: [Output] = []
         for _ in 1...values.count {
             if let value = await next(sourceLocation: sourceLocation) {
