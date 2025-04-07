@@ -71,7 +71,7 @@ struct CurrentValueSubjectTests {
 
             await recorder
                 .expect(0, 1)
-                .expectCompletion()
+                .expectFinished()
         }
     }
 
@@ -86,7 +86,7 @@ struct CurrentValueSubjectTests {
 
             try await recorder
                 .expect(0, 1)
-                .expectError()
+                .expectFailure()
         }
     }
 }

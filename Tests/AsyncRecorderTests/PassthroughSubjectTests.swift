@@ -33,7 +33,7 @@ struct PassthroughSubjectTests {
 
             await recorder
                 .expect(0, 1)
-                .expectCompletion()
+                .expectFinished()
         }
 
         @Test func testTimeoutOnValues() async throws {
@@ -46,7 +46,7 @@ struct PassthroughSubjectTests {
 
                 await recorder
                     .expect(0, 1, 2)
-                    .expectCompletion()
+                    .expectFinished()
             }
         }
 
@@ -59,7 +59,7 @@ struct PassthroughSubjectTests {
 
                 await recorder
                     .expect(0, 1)
-                    .expectCompletion()
+                    .expectFinished()
             }
         }
 
@@ -74,7 +74,7 @@ struct PassthroughSubjectTests {
                 await #expect(throws: TestError.random) {
                     try await recorder
                         .expect(0, 1)
-                        .expectError()
+                        .expectFailure()
                 }
             }
         }
@@ -112,7 +112,7 @@ struct PassthroughSubjectTests {
 
             await recorder
                 .expect(0, 1)
-                .expectCompletion()
+                .expectFinished()
         }
 
         @Test func testExpectError() async throws {
@@ -125,7 +125,7 @@ struct PassthroughSubjectTests {
             await #expect(throws: TestError.random) {
                 try await recorder
                     .expect(0, 1)
-                    .expectError()
+                    .expectFailure()
             }
         }
 
@@ -139,7 +139,7 @@ struct PassthroughSubjectTests {
 
                 await recorder
                     .expect(0, 1, 2)
-                    .expectCompletion()
+                    .expectFinished()
             }
         }
 
@@ -152,7 +152,7 @@ struct PassthroughSubjectTests {
 
                 await recorder
                     .expect(0, 1)
-                    .expectCompletion()
+                    .expectFinished()
             }
         }
 
@@ -167,7 +167,7 @@ struct PassthroughSubjectTests {
                 await #expect(throws: TestError.random) {
                     try await recorder
                         .expect(0, 1)
-                        .expectError()
+                        .expectFailure()
                 }
             }
         }
