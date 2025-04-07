@@ -20,4 +20,4 @@ jobs:
       run: swift build -v
     - name: Run tests
       run: swift test -v --enable-code-coverage
-    - uses: drekka/swift-coverage-action@main@v1.4
+    - uses: drekka/swift-coverage-action@v1.4
