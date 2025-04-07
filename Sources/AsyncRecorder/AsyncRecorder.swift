@@ -118,9 +118,17 @@ public extension AsyncRecorder {
     /// Expect that the `Publisher`will complete with `.finish` with the next event
     ///
     /// expectation will fail when `Publisher` continues to produce values
-    func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
+    func expectFinished(sourceLocation: SourceLocation = #_sourceLocation) async {
         let value = await iterator.next()
         #expect(value?.isFinished() == true, sourceLocation: sourceLocation)
+    }
+
+    /// Expect that the `Publisher`will complete with `.finish` with the next event
+    ///
+    /// expectation will fail when `Publisher` continues to produce values
+    @available(*, deprecated, renamed: "expectFinished")
+    func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
+        await expectFinished(sourceLocation: sourceLocation)
     }
 }
 
@@ -149,13 +157,20 @@ public extension AsyncRecorder where Output: Equatable {
 public extension AsyncRecorder where Failure: Error {
     /// Expect that the `Publisher`will complete with `.failure` with the next event.
     ///  The error will be thrown by this function and can be handled by `#expect(throws:)`
-    func expectError(sourceLocation: SourceLocation = #_sourceLocation) async throws {
+    func expectFailure(sourceLocation: SourceLocation = #_sourceLocation) async throws {
         let value = await iterator.next()
         if case .failure(let failure) = value {
             throw failure
         } else {
             #expect(Bool(false), "No failure found", sourceLocation: sourceLocation)
         }
+    }
+
+    /// Expect that the `Publisher`will complete with `.failure` with the next event.
+    ///  The error will be thrown by this function and can be handled by `#expect(throws:)`
+    @available(*, deprecated, renamed: "expectFailure")
+    func expectError(sourceLocation: SourceLocation = #_sourceLocation) async throws {
+        try await expectFailure(sourceLocation: sourceLocation)
     }
 }
 

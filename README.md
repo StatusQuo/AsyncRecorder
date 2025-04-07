@@ -60,7 +60,7 @@ To wait for a `Publisher` to "finish" use `expectCompletion`.
 
     await recorder
         .expect(0, 1)
-        .expectCompletion()
+        .expectFinished()
 }
 ```
 
@@ -80,7 +80,7 @@ Errors can be expected with `expectError`.
     await #expect(throws: TestError.random) {
         try await recorder
             .expect(0, 1)
-            .expectError()
+            .expectFailure()
     }
 }
 ```
