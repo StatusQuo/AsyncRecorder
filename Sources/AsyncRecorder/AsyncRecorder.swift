@@ -17,6 +17,7 @@ public final class AsyncRecorder<Output, Failure> where Failure: Sendable, Outpu
     private let publisher: any Publisher<Output, Failure>
     private var stream: AsyncStream<RecorderValue>!
     private let timeout: RunLoop.SchedulerTimeType.Stride
+    private var skipping: Bool = false
     var iterator: AsyncStream<RecorderValue>.Iterator!
 
     enum RecorderValue: Sendable {
@@ -97,6 +98,8 @@ public final class AsyncRecorder<Output, Failure> where Failure: Sendable, Outpu
     }
 }
 
+// MARK: - Next
+
 public extension AsyncRecorder {
     func next(sourceLocation: SourceLocation = #_sourceLocation) async -> Output? {
         let value = await iterator.next()
@@ -104,35 +107,23 @@ public extension AsyncRecorder {
         case .value(let result):
             return result
         case .timeout:
-            #expect(Bool(false), "Timeout reached", sourceLocation: sourceLocation)
+            Issue.record("Timeout reached", sourceLocation: sourceLocation)
+           // #expect(Bool(false), "Timeout reached", sourceLocation: sourceLocation)
         case .finished, .none:
-            #expect(Bool(false), "End of stream reached", sourceLocation: sourceLocation)
+
+            Issue.record("End of stream reached", sourceLocation: sourceLocation)
+            //#expect(Bool(false), "End of stream reached", sourceLocation: sourceLocation)
         case .failure(_):
-            #expect(Bool(false), "Error not handled", sourceLocation: sourceLocation)
+            Issue.record("Error not handled", sourceLocation: sourceLocation)
+            //#expect(Bool(false), "Error not handled", sourceLocation: sourceLocation)
         }
         return nil
     }
 }
 
-public extension AsyncRecorder {
-    /// Expect that the `Publisher`will complete with `.finish` with the next event
-    ///
-    /// expectation will fail when `Publisher` continues to produce values
-    func expectFinished(sourceLocation: SourceLocation = #_sourceLocation) async {
-        let value = await iterator.next()
-        #expect(value?.isFinished() == true, sourceLocation: sourceLocation)
-    }
+// MARK: - Expect values
 
-    /// Expect that the `Publisher`will complete with `.finish` with the next event
-    ///
-    /// expectation will fail when `Publisher` continues to produce values
-    @available(*, deprecated, renamed: "expectFinished")
-    func expectCompletion(sourceLocation: SourceLocation = #_sourceLocation) async {
-        await expectFinished(sourceLocation: sourceLocation)
-    }
-}
-
-public extension AsyncRecorder where Output: Equatable {
+extension AsyncRecorder where Output: Equatable {
     /// Collects elements of `AsyncRecorder`and compares it to an list of expected elements
     ///
     ///  Usage:
@@ -142,7 +133,7 @@ public extension AsyncRecorder where Output: Equatable {
     ///     await recorder.expect(false, true, false)
     /// - Parameters:
     ///   - values: List of values in order that the publisher is expected to produce
-    @discardableResult func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async -> Self {
+    @discardableResult public func expect(_ values: Output..., sourceLocation: SourceLocation = #_sourceLocation) async -> Self {
         await expect(values, sourceLocation: sourceLocation)
         return self
     }
@@ -168,6 +159,20 @@ public extension AsyncRecorder where Output: Equatable {
     }
 }
 
+// MARK: - Finished
+
+public extension AsyncRecorder {
+    /// Expect that the `Publisher`will complete with `.finish` with the next event
+    ///
+    /// expectation will fail when `Publisher` continues to produce values
+    func expectFinished(sourceLocation: SourceLocation = #_sourceLocation) async {
+        let value = await iterator.next()
+        #expect(value?.isFinished() == true, sourceLocation: sourceLocation)
+    }
+}
+
+// MARK: - Failure
+
 public extension AsyncRecorder where Failure: Error {
     /// Expect that the `Publisher`will complete with `.failure` with the next event.
     ///  The error will be thrown by this function and can be handled by `#expect(throws:)`
@@ -176,17 +181,12 @@ public extension AsyncRecorder where Failure: Error {
         if case .failure(let failure) = value {
             throw failure
         } else {
-            #expect(Bool(false), "No failure found", sourceLocation: sourceLocation)
+            Issue.record("No failure found", sourceLocation: sourceLocation)
         }
     }
-
-    /// Expect that the `Publisher`will complete with `.failure` with the next event.
-    ///  The error will be thrown by this function and can be handled by `#expect(throws:)`
-    @available(*, deprecated, renamed: "expectFailure")
-    func expectError(sourceLocation: SourceLocation = #_sourceLocation) async throws {
-        try await expectFailure(sourceLocation: sourceLocation)
-    }
 }
+
+// MARK: - Invocation
 
 public extension AsyncRecorder where Output == Void {
     /// Expect that the `Publisher`will publish a specific amount of times `Void`
@@ -204,3 +204,29 @@ public extension AsyncRecorder where Output == Void {
     }
 }
 
+// MARK: - Times
+
+public extension AsyncRecorder where Output: Equatable {
+    /// expect a specific value for an amount of time
+    /// - Parameters:
+    ///   - value: value to be compared with
+    ///   - times: how often do you expect to see the value
+    @discardableResult func expect(_ value: Output, times: Int, sourceLocation: SourceLocation = #_sourceLocation) async -> Self {
+        let result: [Output] = .init(repeating: value, count: times)
+        await expect(result, sourceLocation: sourceLocation)
+        return self
+    }
+}
+
+// MARK: - Skipping
+
+public extension AsyncRecorder where Output: Equatable {
+    /// expect a specific value for an amount of time
+    /// - Parameters:
+    ///   - value: value to be compared with
+    ///   - times: how often do you expect to see the value
+    @discardableResult func skipping(sourceLocation: SourceLocation = #_sourceLocation) async -> Self {
+        skipping = true
+        return self
+    }
+}
