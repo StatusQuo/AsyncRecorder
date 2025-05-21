@@ -265,3 +265,31 @@ public extension AsyncRecorder where Output: Equatable {
         return self
     }
 }
+
+// MARK: - Expect with condition
+
+public extension AsyncRecorder {
+    /// expect next value to met the condition
+    ///
+    /// - Parameters:
+    ///   - condition: the condition to be met
+    @discardableResult func expect(_ condition: (Output?) -> Bool, sourceLocation: SourceLocation = #_sourceLocation) async -> Self {
+        var lastValue: Output?
+        if let value = await next(sourceLocation: sourceLocation) {
+            lastValue = value
+        }
+        if skipping {
+            if !condition(lastValue) {
+                while let value = await next(sourceLocation: sourceLocation) {
+                    lastValue = value
+                    if condition(lastValue) {
+                        break
+                    }
+                }
+            }
+        }
+        skipping = false
+        #expect(condition(lastValue), sourceLocation: sourceLocation)
+        return self
+    }
+}
