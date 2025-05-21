@@ -259,10 +259,7 @@ public extension AsyncRecorder where Output: Equatable {
 // MARK: - Skipping
 
 public extension AsyncRecorder where Output: Equatable {
-    /// expect a specific value for an amount of time
-    /// - Parameters:
-    ///   - value: value to be compared with
-    ///   - times: how often do you expect to see the value
+    /// Skip to the next value that is `expect` also works for `expectFinished` and `expectFailure`
     @discardableResult func skipping(sourceLocation: SourceLocation = #_sourceLocation) async -> Self {
         skipping = true
         return self
