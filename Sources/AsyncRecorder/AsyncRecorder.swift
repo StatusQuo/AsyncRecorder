@@ -154,7 +154,22 @@ extension AsyncRecorder where Output: Equatable {
                 fetchedValues.append(value)
             }
         }
-        #expect(fetchedValues == values, sourceLocation: sourceLocation)
+        if skipping {
+            if fetchedValues != values {
+                while let value = await next(sourceLocation: sourceLocation) {
+                    fetchedValues.append(value)
+                    if fetchedValues.contains(values) {
+                        break
+                    }
+                }
+            }
+        }
+        if skipping {
+            #expect(fetchedValues.contains(values), sourceLocation: sourceLocation)
+        } else {
+            #expect(fetchedValues == values, sourceLocation: sourceLocation)
+        }
+        skipping = false
         return self
     }
 }
@@ -166,7 +181,18 @@ public extension AsyncRecorder {
     ///
     /// expectation will fail when `Publisher` continues to produce values
     func expectFinished(sourceLocation: SourceLocation = #_sourceLocation) async {
-        let value = await iterator.next()
+        var value: RecorderValue?
+        if skipping {
+            while let val = await iterator.next() {
+                value = val
+                if val.isFinished() == true {
+                    break
+                }
+            }
+        } else {
+            value = await iterator.next()
+        }
+        skipping = false
         #expect(value?.isFinished() == true, sourceLocation: sourceLocation)
     }
 }
@@ -177,7 +203,19 @@ public extension AsyncRecorder where Failure: Error {
     /// Expect that the `Publisher`will complete with `.failure` with the next event.
     ///  The error will be thrown by this function and can be handled by `#expect(throws:)`
     func expectFailure(sourceLocation: SourceLocation = #_sourceLocation) async throws {
-        let value = await iterator.next()
+        var value: RecorderValue?
+        if skipping {
+            while let val = await iterator.next() {
+                value = val
+                if case .failure(_) = val {
+                    break
+                }
+            }
+        } else {
+            value = await iterator.next()
+        }
+        skipping = false
+
         if case .failure(let failure) = value {
             throw failure
         } else {
