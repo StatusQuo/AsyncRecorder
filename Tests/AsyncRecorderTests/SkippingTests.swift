@@ -38,6 +38,20 @@ struct SkippingTests {
 
         }
 
+        @Test func testSkipToComplexSequence() async throws {
+            let recorder = subject.record()
+
+            subject.send(1)
+            subject.send(2)
+            subject.send(3)
+            subject.send(2)
+            subject.send(3)
+            subject.send(4)
+
+            await recorder
+                .skipping()
+                .expect(2, 3, 4)
+        }
 
         @Test func testSkipAutoDisable() async throws {
             await withKnownIssue {
